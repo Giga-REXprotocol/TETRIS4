@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>テトリス</title>
+</head>
+<body> 
+       <div id="particles-js"></div>
+    <div id="wrapper">
+    
+   <header><font size="9"><B>テトリス</B></font></header>
+   <canvas id="canvas1" width="250px" height="500px"></canvas>
+   <script>
+    let x=4, y=0, moveDown=false;
+    let can = document.getElementById("canvas1").getContext("2d");
+
+    //テトロミノデータ
+    let arrayTetros = [[-1, 0, 0, 0, 1, 0, 0, 1, "mediumpurple"],    //T型
+                       [ 0, 0, 1, 0,-1, 1, 0, 1, "green"  ],    //S型
+                       [-1, 0, 0, 0, 1, 0,-1, 1, "tomato" ],    //L型
+                       [-1, 0, 0, 0, 1, 0, 1, 1, "royalblue"   ],    //J型
+                       [-1, 0, 0, 0, 1, 0, 2, 0, "hotpink"   ],    //I型
+                       [-1, 0, 0, 0,-1, 1, 0, 1, "gold" ],    //O型
+                       [-1, 0, 0, 0, 0, 1, 1, 1, "mediumseagreen"    ]];   //Z型
+                
+    //フィールドデータ → all"black"
+    let arrayField = []
+    for(let y=0; y<20; y++){
+        let sub = [];
+        for(let x=0; x<10; x++){
+            sub.push("black");
+        }
+        arrayField.push(sub);
+    }
+
+    //最初のテトロミノをランダムに選択
+    let arrayTetro = arrayTetros[Math.floor(Math.random()*arrayTetros.length)];
+
+    //ブロックを描画する関数
+    function draw(){
+        if(moveDown==true){                 //下キーが押されていれば下移動
+            let afterTetro=arrayTetro, afterX=x, afterY=y;
+            afterY+=1;
+            let result = judgeMove(afterTetro, afterX, afterY);
+            if(result){
+            arrayTetro = afterTetro, x = afterX, y = afterY;
+            }
+        }
+        for(let y=0; y<arrayField.length; y++){     //クリア
+            for(let x=0; x<arrayField[y].length; x++){
+                can.fillStyle = arrayField[y][x];            
+                can.fillRect(x*25, y*25, 25,25);
+                can.strokeStyle = "black";
+                can.strokeRect(x*25, y*25, 25, 25);
+            }
+        }
+        for(let i=0; i<4; i++){             //テトロミノ描画
+            can.fillStyle = arrayTetro[8];
+            can.strokeStyle = "black";
+            can.fillRect((arrayTetro[i*2]+x)*25,(arrayTetro[i*2+1]+y)*25,25,25);
+            can.strokeRect((arrayTetro[i*2]+x)*25,(arrayTetro[i*2+1]+y)*25,25,25);
+        }
+    }
+
+    //テトロミノをキー入力とは関係なく落下させる関数
+    function dropTetro(){
+        let afterTetro=arrayTetro, afterX=x, afterY=y+1;
+            let result = judgeMove(afterTetro, afterX, afterY);
+            if(result){
+            arrayTetro = afterTetro, x = afterX, y = afterY;
+            }
+            else if(result==false){         //テトロミノをフィールドに固定する
+                for(let i=0; i<4; i++){
+                    let fixX = arrayTetro[i*2]+x;
+                    let fixY = arrayTetro[i*2+1]+y;
+                    let color = arrayTetro[8];
+                    arrayField[fixY][fixX] = color;
+                }
+
+                lineDelete();       //そろった列を削除する関数をコールバック
+
+                //新しいテトロミノ選択と初期化
+                arrayTetro = arrayTetros[Math.floor(Math.random()*arrayTetros.length)];
+                x=4, y=0, moveDown=false;
+
+                //ゲームオーバーの判定
+                afterTetro=arrayTetro, afterX=x, afterY=y+1;
+                result = judgeMove(afterTetro, afterX, afterY);
+                if(result==false){
+                    clearInterval(timer1);
+                    clearInterval(timer2);
+                    window.alert("Game Over!");
+                }
+            }
+    }
+
+    //そろったラインを削除する関数
+    function lineDelete(){
+        for(let i=0; i<20; i++){
+            if(arrayField[i].indexOf("black")==-1){
+                arrayField.splice(i,1);
+                let sub = []
+                for(let j=0; j<10; j++){
+                    sub.push("black");
+                }
+                arrayField.unshift(sub);
+            }
+        }
+    }
+
+    //セットインターバル(繰り返し処理)
+    let timer1 = setInterval(draw, 50);
+    let timer2 = setInterval(dropTetro, 1000);
+
+    //イベントリスナーを設定
+    document.addEventListener("keydown", keyDown);
+    document.addEventListener("keyup", keyUp);
+    
+    //キーが押されたときの関数
+    function keyDown(e){
+        let afterTetro=arrayTetro.concat(), afterX=x, afterY=y;
+        //下移動
+        if(e.key=="ArrowDown"){moveDown=true;}
+        //左右移動
+        if(e.key=="ArrowRight"){afterX+=1;}
+        if(e.key=="ArrowLeft"){afterX-=1;}
+        //回転(時計回り)
+        if(e.key=="ArrowUp" && arrayTetro[8]!="yellow"){
+            for(let i=0; i<4; i++){
+                afterTetro[i*2] = arrayTetro[i*2+1]*-1;
+                afterTetro[i*2+1] = arrayTetro[i*2];
+            }
+        }
+        //回転(反時計回り)
+        if(e.key==" " && arrayTetro[8]!="yellow"){
+            for(let i=0; i<4; i++){
+                afterTetro[i*2] = arrayTetro[i*2+1];
+                afterTetro[i*2+1] = arrayTetro[i*2]*-1;
+            }
+        }
+        //移動可能判定をする関数をコールバック
+        let result = judgeMove(afterTetro, afterX, afterY);
+        if(result){
+            arrayTetro = afterTetro, x = afterX, y = afterY;
+        }
+    }
+
+    //キーが離されたときの関数
+    function keyUp(e){
+        if(e.key=="ArrowDown"){moveDown=false;}
+    }
+
+    //移動可能判定をする関数
+    function judgeMove(afterTetro, afterX, afterY){
+        for(let i=0; i<4; i++){
+            if(afterTetro[i*2]+afterX<0 || afterTetro[i*2]+afterX>9 ||
+                afterTetro[i*2+1]+afterY<0 || afterTetro[i*2+1]+afterY>19){
+                return false;
+            }
+            let moveX = afterTetro[i*2]+afterX, moveY = afterTetro[i*2+1]+afterY;
+            if(arrayField[moveY][moveX]!="black"){
+                return false;
+            }
+        }
+        return true;
+    }
+</script>
+<div class="textover">
+<h2>上＝↑キー<br>右＝→キー<br>左＝←キー<br>下＝↓キー</h2>
+</div>
+    <script src="http://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
